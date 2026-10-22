@@ -103,17 +103,23 @@ class ABSClient:
         item_id = _id_segment(item_id, "item_id")
         return await self._patch(f"/api/items/{item_id}/media", {"metadata": metadata})
 
-    async def batch_update(self, updates: list[dict]) -> list[dict]:
-        """Send updates in chunks of _BATCH_SIZE. Returns list of per-item results."""
+    async def batch_update(self, updates: list[dict]) -> dict:
+        """Send chunks and retain ABS's actual changed-item counts and responses."""
         for update in updates:
             _validate_id(update.get("id"), "item_id")
         results: list[dict] = []
+        updated = 0
         for i in range(0, len(updates), _BATCH_SIZE):
             chunk = updates[i : i + _BATCH_SIZE]
             resp = await self._post("/api/items/batch/update", chunk)
-            if isinstance(resp, list):
-                results.extend(resp)
-        return results
+            if not isinstance(resp, dict) or resp.get("success") is not True:
+                raise ValueError("ABS returned an unsuccessful or invalid batch update response")
+            count = resp.get("updates")
+            if type(count) is not int or not 0 <= count <= len(chunk):
+                raise ValueError("ABS returned an invalid batch update count")
+            updated += count
+            results.append(resp)
+        return {"updated": updated, "results": results}
 
     async def batch_quickmatch(
         self,

@@ -2,6 +2,12 @@
 
 ## [Unreleased]
 
+### Fixed
+- Send tags at the media payload level and narrators as strings so ABS applies metadata updates.
+- Include the series name alongside cached IDs, as required by ABS; retain library-scoped caching.
+- Report the actual number of changed items from ABS, including zero, separately from the requested count.
+- Reject unsuccessful or malformed batch responses instead of reporting unverified updates.
+
 ## [0.4.0] - 2026-10-03
 
 ### Upgrade notes

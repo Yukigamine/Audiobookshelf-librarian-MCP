@@ -37,7 +37,7 @@ async def test_batch_update_chunks(client):
 
     async def fake_post(path, body=None):
         posted_chunks.append((path, body))
-        return body
+        return {"success": True, "updates": len(body)}
 
     with patch.object(client, "_post", new=AsyncMock(side_effect=fake_post)) as mock_post:
         result = await client.batch_update(items)
@@ -45,7 +45,14 @@ async def test_batch_update_chunks(client):
     assert len(posted_chunks) == 3  # 100 + 100 + 50
     assert [path for path, _ in posted_chunks] == ["/api/items/batch/update"] * 3
     assert [len(body) for _, body in posted_chunks] == [100, 100, 50]
-    assert result == items
+    assert result == {
+        "updated": 250,
+        "results": [
+            {"success": True, "updates": 100},
+            {"success": True, "updates": 100},
+            {"success": True, "updates": 50},
+        ],
+    }
     assert mock_post.await_count == 3
 
 
@@ -145,6 +152,10 @@ def requests():
 
     def handle(request):
         captured.append(request)
+        if request.url.path == "/api/items/batch/update":
+            return httpx.Response(
+                200, json={"success": True, "updates": len(json.loads(request.content))}
+            )
         return httpx.Response(
             200, json={"success": True, "results": [{"id": "item1", "isMissing": True}]}
         )

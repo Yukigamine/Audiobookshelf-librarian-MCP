@@ -311,13 +311,16 @@ async def batch_update_metadata(
             genres=u.get("genres"),
             tags=u.get("tags"),
         )
-        payloads.append({"id": item_id, "mediaPayload": {"metadata": meta}})
+        media_payload = {"metadata": meta}
+        if "tags" in meta:
+            media_payload["tags"] = meta.pop("tags")
+        payloads.append({"id": item_id, "mediaPayload": media_payload})
 
     results = await client.batch_update(payloads)
     if series_updates_present:
         _series_cache.invalidate(library_id)
         _series_cache.seed(library_id, await client.get_series(library_id))
-    return {"updated": len(payloads), "results": results}
+    return {"requested": len(payloads), **results}
 
 
 # ---------------------------------------------------------------------------

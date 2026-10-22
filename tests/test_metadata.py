@@ -21,7 +21,7 @@ def test_series_cache_resolves_by_id():
     cache = SeriesCache()
     cache.seed("lib-1", [{"name": "Dune Chronicles", "id": "abc123"}])
     result = cache.resolve("lib-1", "Dune Chronicles", "1")
-    assert result == {"id": "abc123", "sequence": "1"}
+    assert result == {"id": "abc123", "name": "Dune Chronicles", "sequence": "1"}
 
 
 def test_series_cache_falls_back_to_name():
@@ -112,7 +112,10 @@ async def test_batch_update_metadata_refreshes_series_cache_per_library(monkeypa
 
         async def batch_update(self, payloads):
             self.batch_payloads.append(payloads)
-            return [{"success": True} for _ in payloads]
+            return {
+                "updated": len(payloads),
+                "results": [{"success": True, "updates": len(payloads)}],
+            }
 
     fake_client = FakeClient()
     monkeypatch.setattr(server_module, "_series_cache", SeriesCache(ttl_seconds=None))
@@ -132,15 +135,17 @@ async def test_batch_update_metadata_refreshes_series_cache_per_library(monkeypa
     )
 
     assert fake_client.get_series_calls == ["lib-1", "lib-1", "lib-1", "lib-2", "lib-2"]
-    assert (
-        fake_client.batch_payloads[0][0]["mediaPayload"]["metadata"]["series"][0]
-        == {"name": "New Series", "sequence": "1"}
-    )
-    assert (
-        fake_client.batch_payloads[1][0]["mediaPayload"]["metadata"]["series"][0]
-        == {"id": "new-1", "sequence": "2"}
-    )
-    assert (
-        fake_client.batch_payloads[2][0]["mediaPayload"]["metadata"]["series"][0]
-        == {"id": "existing-2", "sequence": "3"}
-    )
+    assert fake_client.batch_payloads[0][0]["mediaPayload"]["metadata"]["series"][0] == {
+        "name": "New Series",
+        "sequence": "1",
+    }
+    assert fake_client.batch_payloads[1][0]["mediaPayload"]["metadata"]["series"][0] == {
+        "id": "new-1",
+        "name": "New Series",
+        "sequence": "2",
+    }
+    assert fake_client.batch_payloads[2][0]["mediaPayload"]["metadata"]["series"][0] == {
+        "id": "existing-2",
+        "name": "Existing",
+        "sequence": "3",
+    }

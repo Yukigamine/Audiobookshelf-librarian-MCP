@@ -43,7 +43,9 @@ async def test_health_returns_sanitized_error(monkeypatch):
 async def test_batch_update_metadata_resolves_series_and_builds_payload(monkeypatch):
     client = SimpleNamespace(
         get_series=AsyncMock(return_value=[{"name": "Dune", "id": "series-1"}]),
-        batch_update=AsyncMock(return_value=[{"id": "item-1", "success": True}]),
+        batch_update=AsyncMock(
+            return_value={"updated": 1, "results": [{"success": True, "updates": 1}]}
+        ),
     )
     monkeypatch.setattr(server_module, "_client", lambda: client)
     monkeypatch.setattr(server_module, "_series_cache", SeriesCache())
@@ -69,13 +71,13 @@ async def test_batch_update_metadata_resolves_series_and_builds_payload(monkeypa
                     "metadata": {
                         "title": "Dune",
                         "authors": [{"name": "Frank Herbert"}],
-                        "series": [{"id": "series-1", "sequence": "1"}],
+                        "series": [{"id": "series-1", "name": "Dune", "sequence": "1"}],
                     }
                 },
             }
         ]
     )
-    assert result == {"updated": 1, "results": [{"id": "item-1", "success": True}]}
+    assert result == {"requested": 1, "updated": 1, "results": [{"success": True, "updates": 1}]}
 
 
 @pytest.mark.asyncio

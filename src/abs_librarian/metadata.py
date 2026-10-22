@@ -15,14 +15,14 @@ def build_metadata_payload(
     genres: list[str] | None = None,
     tags: list[str] | None = None,
 ) -> dict[str, Any]:
-    """Return a metadata dict containing only the fields that were supplied."""
+    """Return supplied fields; tags must be moved to the media payload by the caller."""
     payload: dict[str, Any] = {}
     if title is not None:
         payload["title"] = title
     if authors is not None:
         payload["authors"] = [{"name": a} if isinstance(a, str) else a for a in authors]
     if narrators is not None:
-        payload["narrators"] = [{"name": n} if isinstance(n, str) else n for n in narrators]
+        payload["narrators"] = narrators
     if series is not None:
         # series items: {"name": "...", "sequence": "..."} or {"id": "...", "sequence": "..."}
         payload["series"] = series
@@ -79,7 +79,13 @@ class SeriesCache:
     def resolve(self, library_id: str, name: str, sequence: str = "") -> dict:
         key = self._normalize(name)
         if self.has_library(library_id) and key in self._cache[library_id]:
-            return {"id": self._cache[library_id][key], "sequence": sequence}
+            # ABS 2.x resolves series by name within the item's library. An ID
+            # alone is rejected, even if it belongs to the correct library.
+            return {
+                "id": self._cache[library_id][key],
+                "name": name.strip(),
+                "sequence": sequence,
+            }
         return {"name": name.strip(), "sequence": sequence}
 
     def add(self, library_id: str, name: str, series_id: str) -> None:
